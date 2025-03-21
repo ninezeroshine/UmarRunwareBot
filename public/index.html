@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор изображений Runware</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="prompt-container">
+      <textarea id="prompt" placeholder="Введите текстовый запрос для генерации изображения..."></textarea>
+    </div>
+    
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-header">
+        <span>Настройки</span>
+        <span class="toggle-arrow">▼</span>
+      </div>
+      <div class="settings-content">
+        <div class="setting-group">
+          <label for="model">Модель:</label>
+          <select id="model"></select>
+        </div>
+        
+        <div class="setting-group">
+          <label for="size">Размер:</label>
+          <select id="size"></select>
+        </div>
+        
+        <div class="setting-group">
+          <label for="steps">Шаги: <span id="stepsValue">30</span></label>
+          <input type="range" id="steps" min="20" max="50" value="30">
+        </div>
+        
+        <div class="setting-group">
+          <label for="cfgScale">CFG Scale: <span id="cfgScaleValue">7.5</span></label>
+          <input type="range" id="cfgScale" min="1" max="20" step="0.5" value="7.5">
+        </div>
+        
+        <div class="setting-group">
+          <label for="numResults">Количество изображений: <span id="numResultsValue">1</span></label>
+          <input type="range" id="numResults" min="1" max="4" value="1">
+        </div>
+      </div>
+    </div>
+    
+    <div class="generate-button-container">
+      <button id="generateBtn">Сгенерировать</button>
+    </div>
+    
+    <div id="results" class="results"></div>
+    
+    <div id="loader" class="loader">
+      <div class="spinner"></div>
+      <p class="loading-text">Генерация изображения...</p>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html> 

@@ -1,17 +1,16 @@
 {
-  "name": "flux-telegram-app",
+  "name": "telegram-runware-bot",
   "version": "1.0.0",
-  "description": "Телеграм Mini App для генерации изображений через Flux",
-  "main": "backend/server.js",
+  "description": "Минимальное приложение для генерации изображений в Telegram",
+  "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js",
-    "install-deps": "npm install && cd backend && npm install"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "nodemon": "^3.0.1"
   }
 } 

@@ -15,6 +15,16 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Отсутствует токен Telegram' });
   }
   
+  // Проверка URL приложения
+  const webappUrl = process.env.WEBAPP_URL;
+  if (!webappUrl) {
+    console.error('API /telegram: Отсутствует WEBAPP_URL в переменных окружения');
+    return res.status(500).json({ error: 'Отсутствует URL веб-приложения' });
+  }
+  
+  // Логируем URL веб-приложения для диагностики
+  console.log(`API /telegram: Используем URL WebApp: ${webappUrl}`);
+  
   try {
     // GET запрос - получение информации о боте
     if (req.method === 'GET') {
@@ -22,9 +32,14 @@ module.exports = async (req, res) => {
       
       const botInfo = await makeRequest(token, 'getMe');
       
+      // Получаем информацию о текущей кнопке меню
+      const menuButton = await makeRequest(token, 'getChatMenuButton');
+      
       return res.status(200).json({
         status: 'success',
         bot: botInfo.result,
+        menuButton: menuButton.result,
+        webappUrl: webappUrl,
         timestamp: new Date().toISOString()
       });
     }
@@ -33,10 +48,10 @@ module.exports = async (req, res) => {
     else if (req.method === 'POST') {
       console.log('API /telegram: Запрос на настройку бота');
       
-      // Получение хоста из заголовка или параметра
-      const host = req.headers.host || req.body.host;
+      // Получаем текущий хост из параметров, хедеров или переменных окружения
+      let host = req.body.host || req.headers.host || new URL(webappUrl).host;
       if (!host) {
-        return res.status(400).json({ error: 'Не указан хост для вебхука' });
+        return res.status(400).json({ error: 'Не удалось определить хост для вебхука' });
       }
       
       // Формируем URL вебхука
@@ -58,22 +73,59 @@ module.exports = async (req, res) => {
       });
       
       // Устанавливаем кнопку меню для веб-приложения
-      const webAppUrl = `https://${host}`;
-      console.log(`API /telegram: Установка веб-приложения ${webAppUrl}`);
+      console.log(`API /telegram: Установка WebApp кнопки с URL ${webappUrl}`);
       
+      // Сначала получаем информацию о боте для проверки
+      const botInfo = await makeRequest(token, 'getMe');
+      
+      // Устанавливаем кнопку меню в соответствии с документацией Telegram
+      // https://core.telegram.org/bots/api#setchatmenubutton
       const menuButtonResult = await makeRequest(token, 'setChatMenuButton', {
         menu_button: {
           type: 'web_app',
-          text: 'Генератор',
-          web_app: { url: webAppUrl }
+          text: 'Генерировать',
+          web_app: {
+            url: webappUrl
+          }
         }
       });
+      
+      // Отправляем сообщение в чат с командой для вызова приложения
+      // Это поможет обновить настройки бота в Telegram
+      try {
+        // Если указан ADMIN_CHAT_ID, отправляем туда тестовое сообщение
+        const adminChatId = process.env.ADMIN_CHAT_ID;
+        if (adminChatId) {
+          const messageResult = await makeRequest(token, 'sendMessage', {
+            chat_id: adminChatId,
+            text: `Настройка WebApp завершена!\nWebApp URL: ${webappUrl}\nБот: @${botInfo.result.username}\nВремя: ${new Date().toISOString()}`,
+            reply_markup: {
+              keyboard: [
+                [
+                  {
+                    text: "Открыть генератор",
+                    web_app: {
+                      url: webappUrl
+                    }
+                  }
+                ]
+              ],
+              resize_keyboard: true
+            }
+          });
+          console.log('API /telegram: Отправлено тестовое сообщение администратору');
+        }
+      } catch (msgError) {
+        console.error('API /telegram: Ошибка при отправке тестового сообщения:', msgError);
+      }
       
       return res.status(200).json({
         status: 'success',
         webhook: webhookResult.result,
         commands: commandsResult.result,
         menu_button: menuButtonResult.result,
+        webappUrl: webappUrl,
+        botUsername: botInfo.result.username,
         timestamp: new Date().toISOString()
       });
     }
@@ -108,7 +160,7 @@ function makeRequest(token, method, params = {}) {
       }
     };
     
-    console.log(`API /telegram: Запрос к ${method}`);
+    console.log(`API /telegram: Запрос к ${method}`, params);
     
     // Создание запроса
     const req = https.request(options, (res) => {
@@ -123,6 +175,7 @@ function makeRequest(token, method, params = {}) {
       res.on('end', () => {
         try {
           const parsedData = JSON.parse(responseData);
+          console.log(`API /telegram: Ответ от ${method}:`, responseData);
           
           if (res.statusCode >= 200 && res.statusCode < 300 && parsedData.ok) {
             resolve(parsedData);

@@ -8,6 +8,7 @@ const fs = require('fs');
 const generateHandler = require('./generate');
 const healthHandler = require('./health');
 const telegramHandler = require('./telegram');
+const webhookHandler = require('./webhook');
 
 // Базовые модели и размеры по умолчанию
 const DEFAULT_MODELS = {
@@ -61,6 +62,9 @@ app.get('/api/health', healthHandler);
 
 // Telegram вебхук и управление ботом
 app.all('/api/telegram', telegramHandler);
+
+// Обработчик вебхуков от Telegram Bot API
+app.post('/api/webhook', express.json(), webhookHandler);
 
 // API для генерации изображений
 app.post('/api/generate', generateHandler);

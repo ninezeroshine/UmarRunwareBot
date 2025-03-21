@@ -1,25 +1,19 @@
-// Проверка работоспособности API
+// Проверка работоспособности сервера
 module.exports = async (req, res) => {
-  console.log('API /health: Проверка работоспособности API');
+  console.log('API /health: Проверка работоспособности');
   
-  // Информация о переменных окружения (без вывода самих значений)
-  const envVars = {
-    RUNWARE_API_KEY: process.env.RUNWARE_API_KEY ? 'установлен' : 'отсутствует',
-    TELEGRAM_API_TOKEN: process.env.TELEGRAM_API_TOKEN ? 'установлен' : 'отсутствует',
-    NODE_ENV: process.env.NODE_ENV || 'не установлена'
-  };
+  const telegramApiToken = process.env.TELEGRAM_API_TOKEN ? 'настроен' : 'отсутствует';
+  const runwareApiKey = process.env.RUNWARE_API_KEY ? 'настроен' : 'отсутствует';
+  const webappUrl = process.env.WEBAPP_URL ? process.env.WEBAPP_URL : 'отсутствует';
   
-  console.log('API /health: Статус переменных окружения:', envVars);
-  
-  // Подготовка ответа
-  const response = {
-    status: 'active',
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    env_status: envVars,
-    version: '1.0.0'
-  };
-  
-  // Отправляем ответ
-  return res.status(200).json(response);
+    api: {
+      telegram: telegramApiToken,
+      runware: runwareApiKey,
+      webappUrl: webappUrl
+    }
+  });
 }; 

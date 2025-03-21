@@ -25,6 +25,15 @@ const DEFAULT_SIZES = {
   '576x1024': [576, 1024]
 };
 
+// Пример работающих AIR идентификаторов из документации
+const EXAMPLE_MODELS = {
+  'FLUX Dev': 'runware:101@1',
+  'FLUX Dev Fill': 'runware:102@1',
+  'FLUX Dev Depth': 'runware:103@1',
+  'FLUX Dev Canny': 'runware:104@1',
+  'FLUX Dev Redux': 'runware:105@1'
+};
+
 // Создаем экземпляр Express
 const app = express();
 
@@ -59,16 +68,22 @@ app.post('/api/generate', generateHandler);
 // API для получения доступных моделей
 app.get('/api/models', (req, res) => {
   console.log('API /models: Запрос списка моделей');
-  console.log('API /models: Отправляем модели:', DEFAULT_MODELS);
   
-  // Проверяем, что все идентификаторы моделей соответствуют формату AIR
-  for (const [name, id] of Object.entries(DEFAULT_MODELS)) {
+  // Используем модели из документации
+  const MODELS_TO_SEND = EXAMPLE_MODELS;
+  
+  console.log('API /models: Отправляем модели:', JSON.stringify(MODELS_TO_SEND, null, 2));
+  
+  // Проверка на соответствие формату AIR идентификатора
+  Object.entries(MODELS_TO_SEND).forEach(([name, id]) => {
     if (!id.match(/^[a-zA-Z0-9]+:[0-9]+@[0-9]+$/)) {
-      console.error(`API /models: Модель ${name} имеет неверный формат идентификатора: ${id}`);
+      console.error(`API /models: Модель ${name} имеет неверный формат AIR идентификатора: ${id}`);
+    } else {
+      console.log(`API /models: Модель ${name} проверена, формат AIR идентификатора корректен: ${id}`);
     }
-  }
+  });
   
-  res.json({ models: DEFAULT_MODELS });
+  res.json({ models: MODELS_TO_SEND });
 });
 
 // API для получения доступных размеров

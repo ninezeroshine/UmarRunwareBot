@@ -159,8 +159,23 @@ async function loadSizes() {
 // Генерация изображений
 async function generateImage() {
   try {
+    // Очищаем область результатов перед новой генерацией
+    resultsArea.innerHTML = '';
+    
+    // Показываем индикатор загрузки
     showLoader('Генерация изображения...');
     
+    // Проверяем модель
+    if (!settings.model) {
+      throw new Error('Не выбрана модель для генерации');
+    }
+    
+    // Проверяем промпт
+    if (!settings.prompt || settings.prompt.trim().length === 0) {
+      throw new Error('Введите текстовый запрос для генерации');
+    }
+    
+    // Формируем тело запроса
     const requestBody = {
       prompt: settings.prompt,
       model: settings.model,
@@ -171,9 +186,10 @@ async function generateImage() {
       number_results: settings.number_results
     };
     
-    console.log('Отправка запроса на генерацию:', requestBody);
+    console.log('Отправка запроса на генерацию:', JSON.stringify(requestBody, null, 2));
+    console.log('Выбранная модель:', settings.model);
     
-    // Запрос к API
+    // Отправляем запрос на сервер
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
@@ -184,18 +200,21 @@ async function generateImage() {
     
     console.log('Статус ответа:', response.status, response.statusText);
     
-    // Получаем текстовое содержимое ответа для логирования
+    // Получаем текст ответа
     const responseText = await response.text();
-    console.log('Текст ответа:', responseText);
+    console.log('Сырой ответ:', responseText.substring(0, 1000) + (responseText.length > 1000 ? '...' : ''));
     
-    // Если ответ не является успешным
+    // Если ответ не успешен, обрабатываем ошибку
     if (!response.ok) {
-      let errorMessage = 'Ошибка генерации';
+      let errorMessage = 'Ошибка генерации изображения';
       
       try {
-        // Пробуем распарсить JSON
         const errorData = JSON.parse(responseText);
-        errorMessage = errorData.error || errorMessage;
+        errorMessage = errorData.error || errorData.message || errorMessage;
+        
+        if (errorData.details) {
+          console.error('Детали ошибки:', errorData.details);
+        }
       } catch (e) {
         console.error('Не удалось разобрать ответ как JSON:', e);
       }
@@ -214,12 +233,17 @@ async function generateImage() {
     
     console.log('Получен ответ с изображениями:', data);
     
+    // Проверяем наличие изображений
     if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
-      console.error('Нет изображений в ответе:', data);
-      throw new Error('Сервер не вернул изображения');
+      console.error('Сервер не вернул изображения:', data);
+      throw new Error('Изображения не были сгенерированы');
     }
     
+    // Отображаем результаты
     displayResults(data.images);
+    
+    // Показываем уведомление об успехе
+    console.log('Успешно сгенерировано изображений:', data.images.length);
     
   } catch (error) {
     console.error('Ошибка генерации:', error);

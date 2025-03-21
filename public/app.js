@@ -1,17 +1,44 @@
 // Инициализация Telegram WebApp
-const telegram = window.Telegram.WebApp;
-telegram.expand();
+const telegram = window.Telegram?.WebApp;
 
-// Логирование для отладки
-console.log('Telegram WebApp инициализирован', {
-  initData: telegram.initData ? 'присутствует' : 'отсутствует',
-  version: telegram.version,
-  platform: telegram.platform,
-  colorScheme: telegram.colorScheme
-});
-
-// Настройка темы
-document.body.classList.add(telegram.colorScheme === 'dark' ? 'theme-dark' : 'theme-light');
+// Проверяем правильность инициализации
+if (!telegram) {
+  console.error('Telegram WebApp не инициализирован! Возможно приложение открыто не через Telegram');
+  document.getElementById('initLoader').innerHTML = `
+    <p style="color:red; text-align:center;">
+      Приложение должно быть открыто через Telegram.<br>
+      Если вы видите это сообщение внутри Telegram, сообщите разработчику.
+    </p>
+  `;
+} else {
+  // Расширяем WebApp на всю высоту
+  telegram.expand();
+  
+  // Устанавливаем цвета согласно теме Telegram
+  if (telegram.themeParams) {
+    document.documentElement.style.setProperty('--tg-theme-bg-color', telegram.themeParams.bg_color || '#ffffff');
+    document.documentElement.style.setProperty('--tg-theme-text-color', telegram.themeParams.text_color || '#000000');
+    document.documentElement.style.setProperty('--tg-theme-hint-color', telegram.themeParams.hint_color || '#999999');
+    document.documentElement.style.setProperty('--tg-theme-link-color', telegram.themeParams.link_color || '#2481cc');
+    document.documentElement.style.setProperty('--tg-theme-button-color', telegram.themeParams.button_color || '#2481cc');
+    document.documentElement.style.setProperty('--tg-theme-button-text-color', telegram.themeParams.button_text_color || '#ffffff');
+  }
+  
+  // Настройка темы
+  document.body.classList.add(telegram.colorScheme === 'dark' ? 'theme-dark' : 'theme-light');
+  
+  // Логирование информации о WebApp
+  console.log('Telegram WebApp инициализирован', {
+    initDataUnsafe: telegram.initDataUnsafe ? 'присутствует' : 'отсутствует',
+    version: telegram.version,
+    platform: telegram.platform,
+    colorScheme: telegram.colorScheme,
+    viewportHeight: telegram.viewportHeight,
+    viewportStableHeight: telegram.viewportStableHeight,
+    headerColor: telegram.headerColor,
+    backgroundColor: telegram.backgroundColor
+  });
+}
 
 // Переменные состояния
 let settings = {
@@ -38,6 +65,7 @@ const numResultsValue = document.getElementById('numResultsValue');
 const generateBtn = document.getElementById('generateBtn');
 const resultsArea = document.getElementById('results');
 const loader = document.getElementById('loader');
+const initLoader = document.getElementById('initLoader');
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsHeader = settingsPanel.querySelector('.settings-header');
 const settingsContent = settingsPanel.querySelector('.settings-content');
@@ -388,34 +416,93 @@ async function checkTelegramBot() {
   }
 }
 
-// Запуск приложения
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Приложение загружено');
-  
-  if (!window.Telegram || !telegram) {
-    console.warn('Telegram WebApp не обнаружен. Возможно, приложение запущено не из Telegram.');
-  } else if (!telegram.initDataUnsafe?.user) {
-    console.warn('Данные пользователя Telegram отсутствуют');
-  }
-  
-  showLoader('Загрузка...');
-  
+// Инициализация приложения
+async function initApp() {
   try {
-    // Проверка API
-    await checkApiHealth();
+    console.log('Инициализация приложения...');
     
-    // Загрузка данных
-    await Promise.all([
-      loadModels(),
-      loadSizes()
-    ]);
+    // Проверяем API
+    const healthStatus = await checkApiHealth();
+    if (healthStatus.status !== 'ok') {
+      throw new Error('API недоступно');
+    }
     
-    // Проверка бота
-    await checkTelegramBot();
+    // Загружаем модели и размеры
+    await Promise.all([loadModels(), loadSizes()]);
     
+    // Скрываем загрузчик инициализации
+    initLoader.style.display = 'none';
+    
+    // Сообщаем Telegram, что приложение готово
+    if (telegram) {
+      console.log('Сообщаем Telegram о готовности приложения');
+      telegram.ready();
+      
+      // Активируем главную кнопку, если она доступна
+      if (telegram.MainButton) {
+        telegram.MainButton.setText('Сгенерировать');
+        telegram.MainButton.onClick(generateImage);
+        telegram.MainButton.show();
+      }
+    }
+    
+    console.log('Приложение инициализировано успешно');
   } catch (error) {
     console.error('Ошибка инициализации:', error);
-  } finally {
-    hideLoader();
+    showError('Ошибка инициализации: ' + error.message);
+    initLoader.innerHTML = `
+      <p style="color:red; text-align:center;">
+        Ошибка инициализации: ${error.message}<br>
+        Попробуйте перезапустить приложение.
+      </p>
+    `;
   }
+}
+
+// Обработчики событий
+document.addEventListener('DOMContentLoaded', function() {
+  // Инициализация приложения
+  initApp();
+  
+  // Обработчики событий для пользовательского ввода
+  promptInput.addEventListener('input', function() {
+    settings.prompt = this.value;
+  });
+  
+  modelSelect.addEventListener('change', function() {
+    settings.model = this.value;
+  });
+  
+  sizeSelect.addEventListener('change', function() {
+    settings.size_name = this.value;
+    const selectedOption = this.options[this.selectedIndex];
+    settings.width = parseInt(selectedOption.dataset.width);
+    settings.height = parseInt(selectedOption.dataset.height);
+  });
+  
+  stepsSlider.addEventListener('input', function() {
+    const value = parseInt(this.value);
+    stepsValue.textContent = value;
+    settings.steps = value;
+  });
+  
+  cfgScaleSlider.addEventListener('input', function() {
+    const value = parseFloat(this.value);
+    cfgScaleValue.textContent = value;
+    settings.cfg_scale = value;
+  });
+  
+  numResultsSlider.addEventListener('input', function() {
+    const value = parseInt(this.value);
+    numResultsValue.textContent = value;
+    settings.number_results = value;
+  });
+  
+  generateBtn.addEventListener('click', generateImage);
+  
+  // Раскрытие/скрытие панели настроек
+  settingsHeader.addEventListener('click', function() {
+    settingsContent.style.display = settingsContent.style.display === 'none' ? 'block' : 'none';
+    toggleArrow.textContent = settingsContent.style.display === 'none' ? '▼' : '▲';
+  });
 }); 

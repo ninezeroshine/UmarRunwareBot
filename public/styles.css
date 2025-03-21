@@ -1,159 +1,191 @@
 :root {
+  /* Основные переменные цветов Telegram */
   --tg-theme-bg-color: #ffffff;
   --tg-theme-text-color: #000000;
   --tg-theme-hint-color: #999999;
   --tg-theme-link-color: #2481cc;
   --tg-theme-button-color: #2481cc;
   --tg-theme-button-text-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f4f4f5;
+  
+  /* Пользовательские переменные */
+  --container-padding: 16px;
+  --container-max-width: 800px;
   --border-radius: 8px;
-  --spacing: 12px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 * {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--tg-theme-bg-color);
   color: var(--tg-theme-text-color);
-  padding: 16px;
-  line-height: 1.4;
+  line-height: 1.5;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.theme-dark {
-  --tg-theme-bg-color: #212121;
-  --tg-theme-text-color: #ffffff;
-  --tg-theme-hint-color: #aaaaaa;
-  --tg-theme-link-color: #8ec3ff;
-  --tg-theme-button-color: #2481cc;
-  --tg-theme-button-text-color: #ffffff;
+/* Тема для светлого режима */
+body.theme-light {
+  --container-bg: var(--tg-theme-bg-color, #ffffff);
+  --card-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  --settings-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  --button-bg: var(--tg-theme-button-color, #2481cc);
+  --button-text: var(--tg-theme-button-text-color, #ffffff);
+  --text-color: var(--tg-theme-text-color, #000000);
+  --hint-color: var(--tg-theme-hint-color, #999999);
+  --border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Тема для темного режима */
+body.theme-dark {
+  --container-bg: var(--tg-theme-bg-color, #212121);
+  --card-bg: var(--tg-theme-secondary-bg-color, #333333);
+  --settings-bg: var(--tg-theme-secondary-bg-color, #333333);
+  --button-bg: var(--tg-theme-button-color, #2481cc);
+  --button-text: var(--tg-theme-button-text-color, #ffffff);
+  --text-color: var(--tg-theme-text-color, #ffffff);
+  --hint-color: var(--tg-theme-hint-color, #aaaaaa);
+  --border-color: rgba(255, 255, 255, 0.1);
 }
 
 .container {
-  max-width: 100%;
+  max-width: var(--container-max-width);
   margin: 0 auto;
+  padding: var(--container-padding);
+  background-color: var(--container-bg);
+  min-height: 100vh;
 }
 
+/* Текстовый запрос */
 .prompt-container {
-  margin-bottom: var(--spacing);
+  margin-bottom: 16px;
 }
 
-textarea {
+textarea#prompt {
   width: 100%;
-  min-height: 100px;
-  padding: var(--spacing);
+  padding: 12px;
   border-radius: var(--border-radius);
-  border: 1px solid var(--tg-theme-hint-color);
-  background-color: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
-  font-size: 16px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-color);
   resize: vertical;
+  font-size: 16px;
+  min-height: 100px;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
+/* Панель настроек */
 .settings-panel {
-  border: 1px solid var(--tg-theme-hint-color);
+  background-color: var(--settings-bg);
   border-radius: var(--border-radius);
-  margin-bottom: var(--spacing);
+  margin-bottom: 16px;
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 
 .settings-header {
-  padding: var(--spacing);
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
   cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.05);
   font-weight: bold;
-}
-
-.theme-dark .settings-header {
-  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
 }
 
 .settings-content {
-  padding: var(--spacing);
+  padding: 0 16px 16px;
 }
 
 .setting-group {
-  margin-bottom: var(--spacing);
+  margin-bottom: 16px;
 }
 
-label {
+.setting-group label {
   display: block;
-  margin-bottom: 4px;
-  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-color);
 }
 
-select, input {
+.setting-group select,
+.setting-group input[type="range"] {
   width: 100%;
   padding: 8px;
   border-radius: var(--border-radius);
-  border: 1px solid var(--tg-theme-hint-color);
-  background-color: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
-  font-size: 16px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
-select {
+.setting-group select {
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888888' d='M6 9L0 3h12z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px;
-  padding-right: 32px;
+  background-position: right 10px center;
+  padding-right: 30px;
 }
 
+/* Кнопка генерации */
 .generate-button-container {
-  margin-bottom: var(--spacing);
+  margin-bottom: 16px;
 }
 
-button {
+button#generateBtn {
   width: 100%;
   padding: 12px;
-  background-color: var(--tg-theme-button-color);
-  color: var(--tg-theme-button-text-color);
-  border: none;
   border-radius: var(--border-radius);
+  border: none;
+  background-color: var(--button-bg);
+  color: var(--button-text);
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background-color 0.2s;
 }
 
-button:hover {
+button#generateBtn:hover {
   opacity: 0.9;
 }
 
+button#generateBtn:active {
+  transform: scale(0.98);
+}
+
+/* Область результатов */
 .results {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--spacing);
-  margin-top: var(--spacing);
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .result-item {
   border-radius: var(--border-radius);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--box-shadow);
+  background-color: var(--card-bg);
 }
 
 .result-item img {
   width: 100%;
+  height: auto;
   display: block;
-  object-fit: cover;
 }
 
-.error-message {
-  color: #e53935;
-  padding: var(--spacing);
-  text-align: center;
-  background-color: rgba(229, 57, 53, 0.1);
-  border-radius: var(--border-radius);
-}
-
+/* Лоадер */
 .loader {
   position: fixed;
   top: 0;
@@ -161,7 +193,7 @@ button:hover {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.7);
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -169,20 +201,22 @@ button:hover {
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
   border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  animation: spin 1s infinite linear;
+  border-radius: 50%;
+  border-top: 4px solid white;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
 }
 
 .loading-text {
-  margin-top: 16px;
   color: white;
-  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 } 

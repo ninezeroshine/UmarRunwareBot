@@ -39,6 +39,12 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Параметр model обязателен' });
   }
 
+  // Проверяем, что модель имеет формат AIR идентификатора
+  if (!model.match(/^[a-zA-Z0-9]+:[0-9]+@[0-9]+$/)) {
+    console.error(`API /generate: Неверный формат AIR идентификатора модели: ${model}`);
+    return res.status(400).json({ error: 'Model must be an string value representing a valid AIR identifier (format: provider:id@version)' });
+  }
+
   console.log('API /generate: Параметры запроса:', {
     model,
     width,
@@ -60,11 +66,11 @@ module.exports = async (req, res) => {
       taskUUID: generateUUID(),
       positivePrompt: prompt,
       model: model,
-      width: width,
-      height: height,
-      steps: steps,
-      CFGScale: cfg_scale,
-      numberResults: number_results
+      width: parseInt(width),
+      height: parseInt(height),
+      steps: parseInt(steps),
+      CFGScale: parseFloat(cfg_scale),
+      numberResults: parseInt(number_results)
     }
   ]);
 

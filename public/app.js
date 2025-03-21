@@ -300,7 +300,17 @@ numResultsSlider.addEventListener('input', () => {
 });
 
 modelSelect.addEventListener('change', () => {
-  updateSetting('model', modelSelect.value);
+  const selectedModel = modelSelect.value;
+  console.log(`Выбрана модель: ${selectedModel}`);
+  
+  // Проверка формата модели
+  if (!selectedModel.match(/^[a-zA-Z0-9]+:[0-9]+@[0-9]+$/)) {
+    console.error(`Неверный формат AIR идентификатора модели: ${selectedModel}`);
+    showError('Выбрана модель с неправильным форматом идентификатора. Пожалуйста, свяжитесь с разработчиком.');
+    return;
+  }
+  
+  updateSetting('model', selectedModel);
 });
 
 sizeSelect.addEventListener('change', () => {

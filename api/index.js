@@ -59,6 +59,15 @@ app.post('/api/generate', generateHandler);
 // API для получения доступных моделей
 app.get('/api/models', (req, res) => {
   console.log('API /models: Запрос списка моделей');
+  console.log('API /models: Отправляем модели:', DEFAULT_MODELS);
+  
+  // Проверяем, что все идентификаторы моделей соответствуют формату AIR
+  for (const [name, id] of Object.entries(DEFAULT_MODELS)) {
+    if (!id.match(/^[a-zA-Z0-9]+:[0-9]+@[0-9]+$/)) {
+      console.error(`API /models: Модель ${name} имеет неверный формат идентификатора: ${id}`);
+    }
+  }
+  
   res.json({ models: DEFAULT_MODELS });
 });
 

@@ -38,6 +38,16 @@ if (!telegram) {
     headerColor: telegram.headerColor,
     backgroundColor: telegram.backgroundColor
   });
+  
+  // Сообщаем Telegram, что приложение полностью проинициализировано
+  try {
+    // Используем ready() для сообщения о готовности приложения
+    console.log('Вызываем telegram.ready()');
+    telegram.ready();
+    console.log('telegram.ready() вызван успешно');
+  } catch (e) {
+    console.error('Ошибка при вызове telegram.ready():', e);
+  }
 }
 
 // Переменные состояния
@@ -416,52 +426,38 @@ async function checkTelegramBot() {
   }
 }
 
-// Инициализация приложения
+// Добавим функцию инициализации приложения
 async function initApp() {
   try {
-    console.log('Инициализация приложения...');
+    console.log('Инициализация приложения');
     
-    // Проверяем API
+    // Проверяем работоспособность API
     const healthStatus = await checkApiHealth();
     if (healthStatus.status !== 'ok') {
-      throw new Error('API недоступно');
+      throw new Error('API сервер недоступен');
     }
     
     // Загружаем модели и размеры
     await Promise.all([loadModels(), loadSizes()]);
     
-    // Скрываем загрузчик инициализации
-    initLoader.style.display = 'none';
+    // Скрываем loader инициализации
+    document.getElementById('initLoader').style.display = 'none';
     
-    // Сообщаем Telegram, что приложение готово
-    if (telegram) {
-      console.log('Сообщаем Telegram о готовности приложения');
-      telegram.ready();
-      
-      // Активируем главную кнопку, если она доступна
-      if (telegram.MainButton) {
-        telegram.MainButton.setText('Сгенерировать');
-        telegram.MainButton.onClick(generateImage);
-        telegram.MainButton.show();
-      }
-    }
-    
-    console.log('Приложение инициализировано успешно');
+    console.log('Приложение успешно инициализировано');
   } catch (error) {
-    console.error('Ошибка инициализации:', error);
-    showError('Ошибка инициализации: ' + error.message);
-    initLoader.innerHTML = `
+    console.error('Ошибка инициализации приложения:', error);
+    document.getElementById('initLoader').innerHTML = `
       <p style="color:red; text-align:center;">
         Ошибка инициализации: ${error.message}<br>
-        Попробуйте перезапустить приложение.
+        Попробуйте перезапустить приложение
       </p>
     `;
   }
 }
 
 // Обработчики событий
-document.addEventListener('DOMContentLoaded', function() {
-  // Инициализация приложения
+document.addEventListener('DOMContentLoaded', () => {
+  // Запускаем инициализацию приложения
   initApp();
   
   // Обработчики событий для пользовательского ввода

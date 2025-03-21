@@ -1,179 +1,197 @@
-// API для генерации изображений
-const https = require('https');
+// Модуль для выполнения HTTP запросов
+const fetch = require('node-fetch');
+const { v4: uuidv4 } = require('uuid');
 
-// Обработчик для генерации изображений
-module.exports = async (req, res) => {
-  console.log('API /generate: Получен запрос');
-  
-  // Получаем API ключ из переменных окружения
-  const apiKey = process.env.RUNWARE_API_KEY;
-  if (!apiKey) {
-    console.error('API /generate: Отсутствует RUNWARE_API_KEY в переменных окружения');
-    return res.status(500).json({ error: 'Отсутствует API ключ Runware' });
-  }
+// URL и ключ API Runware
+const RUNWARE_API_URL = process.env.RUNWARE_API_URL || 'wss://api.runware.ai:2096/api/v0/ws';
+const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 
-  // Проверяем метод запроса
-  if (req.method !== 'POST') {
-    console.error(`API /generate: Неподдерживаемый метод ${req.method}`);
-    return res.status(405).json({ error: 'Метод не поддерживается' });
-  }
-
-  // Извлекаем параметры из тела запроса
-  const { 
-    prompt, 
-    model, 
-    width = 512, 
-    height = 512, 
-    steps = 30, 
-    cfg_scale = 7.5, 
-    number_results = 1 
-  } = req.body;
-  
-  // Проверяем обязательные параметры
-  if (!prompt) {
-    console.error('API /generate: Отсутствует параметр prompt');
-    return res.status(400).json({ error: 'Параметр prompt обязателен' });
+// Функция для получения корректного формата запроса
+function createRunwarePayload(params) {
+  // Проверяем наличие обязательных параметров
+  if (!params.prompt) {
+    throw new Error('Не указан текстовый запрос (prompt)');
   }
   
-  if (!model) {
-    console.error('API /generate: Отсутствует параметр model');
-    return res.status(400).json({ error: 'Параметр model обязателен' });
+  if (!params.model) {
+    throw new Error('Не указана модель (model)');
   }
-
-  // Логируем параметры запроса
-  console.log('API /generate: Параметры запроса:', {
-    prompt: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
-    model,
-    width,
-    height,
-    steps,
-    cfg_scale,
-    number_results
-  });
-
-  // Подготавливаем данные для запроса к Runware API
-  const taskUUID = generateUUID();
-  const requestPayload = [
+  
+  // UUID для идентификации запроса
+  const uuid = uuidv4();
+  
+  // Создаем корректную структуру запроса
+  return [
     {
-      taskType: "authentication",
-      apiKey
+      "token": "token",  // Этот токен будет заменен при обработке запроса
+      "type": "auth",
+      "uuid": uuid
     },
     {
-      taskType: "imageInference",
-      taskUUID,
-      positivePrompt: prompt,
-      model,
-      width: parseInt(width),
-      height: parseInt(height),
-      steps: parseInt(steps),
-      CFGScale: parseFloat(cfg_scale),
-      numberResults: parseInt(number_results)
+      "type": "inference",
+      "uuid": uuid,
+      "inference_type": "txt2img",
+      "inference_params": {
+        "positivePrompt": params.prompt,
+        "negativePrompt": params.negative_prompt || "",
+        "model": params.model,
+        "width": params.width || 512,
+        "height": params.height || 512,
+        "steps": params.steps || 30,
+        "CFGScale": params.cfg_scale || 7.5,
+        "numberResults": params.number_results || 1,
+        "seed": params.seed || -1
+      }
     }
   ];
+}
 
-  const requestBody = JSON.stringify(requestPayload);
-  console.log('API /generate: Отправляемый запрос:', JSON.stringify(requestPayload, null, 2));
-
-  // Настройки для HTTP запроса
-  const options = {
-    method: 'POST',
-    hostname: 'api.runware.ai',
-    port: 443,
-    path: '/v1',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(requestBody)
-    }
+// Функция для нормализации параметров в запросе
+function normalizeParams(req) {
+  // Получаем данные из запроса
+  const requestData = req.body || {};
+  
+  // Проверяем и нормализуем параметры
+  return {
+    prompt: requestData.prompt,
+    negative_prompt: requestData.negative_prompt,
+    model: requestData.model,
+    width: parseInt(requestData.width) || 512,
+    height: parseInt(requestData.height) || 512,
+    steps: parseInt(requestData.steps) || 30,
+    cfg_scale: parseFloat(requestData.cfg_scale) || 7.5,
+    number_results: parseInt(requestData.number_results) || 1,
+    seed: parseInt(requestData.seed) || -1
   };
+}
 
-  try {
-    // Отправляем запрос к Runware API
-    console.log('API /generate: Отправка запроса к Runware API');
-    
-    // Выполняем запрос и ждем ответа
-    const response = await new Promise((resolve, reject) => {
-      const req = https.request(options, (response) => {
-        let data = '';
-        response.on('data', (chunk) => {
-          data += chunk;
-        });
-        response.on('end', () => {
-          console.log(`API /generate: Получен ответ с кодом: ${response.statusCode}`);
-          try {
-            // Пробуем распарсить ответ как JSON
-            const responseData = JSON.parse(data);
-            resolve({ statusCode: response.statusCode, data: responseData });
-          } catch (error) {
-            console.error('API /generate: Ошибка парсинга JSON:', error.message);
-            console.log('API /generate: Сырой ответ:', data);
-            reject(new Error('Ошибка парсинга ответа API'));
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        console.error('API /generate: Ошибка сетевого запроса:', error.message);
-        reject(error);
-      });
-
-      req.write(requestBody);
-      req.end();
-    });
-
-    // Проверяем код ответа
-    if (response.statusCode >= 400) {
-      // Ошибка HTTP
-      console.error('API /generate: Ошибка HTTP', response.statusCode, response.data);
-      
-      // Проверяем наличие сообщения об ошибке в ответе
-      let errorMessage = 'Ошибка API Runware';
-      if (response.data && response.data.errors && response.data.errors.length > 0) {
-        errorMessage = response.data.errors[0].message || errorMessage;
-      }
-      
-      return res.status(500).json({ error: errorMessage });
-    }
-
-    // Логируем ответ
-    console.log('API /generate: Ответ API:', JSON.stringify(response.data).substring(0, 500) + '...');
-
-    // Проверяем структуру ответа
-    if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
-      console.error('API /generate: Неожиданная структура ответа:', response.data);
-      return res.status(500).json({ error: 'Неожиданный формат ответа API' });
-    }
-
-    // Извлекаем URL изображений из ответа
-    const imageResults = response.data.data.filter(
-      item => item.taskType === 'imageInference' && item.imageURL
-    );
-
-    if (imageResults.length === 0) {
-      console.error('API /generate: Нет результатов генерации в ответе');
-      return res.status(500).json({ error: 'Изображения не были сгенерированы' });
-    }
-
-    // Собираем URLs изображений
-    const imageUrls = imageResults.map(item => item.imageURL);
-    console.log(`API /generate: Получено ${imageUrls.length} изображений`);
-
-    // Отправляем URLs изображений клиенту
-    return res.status(200).json({ images: imageUrls });
-
-  } catch (error) {
-    console.error('API /generate: Ошибка обработки запроса:', error);
-    return res.status(500).json({ 
-      error: 'Ошибка при обработке запроса к Runware API',
-      details: error.message
+// Обработчик запросов на генерацию изображений
+module.exports = async (req, res) => {
+  // Проверяем, что у нас есть API ключ
+  if (!RUNWARE_API_KEY) {
+    console.error('RUNWARE_API_KEY не найден в переменных окружения');
+    return res.status(500).json({
+      status: 'error',
+      message: 'Ошибка конфигурации сервера: отсутствует API ключ'
     });
   }
-};
-
-// Генерирует уникальный UUID v4
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-} 
+  
+  // Проверяем метод запроса
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      status: 'error',
+      message: 'Метод не поддерживается. Используйте POST.'
+    });
+  }
+  
+  try {
+    // Подготавливаем параметры запроса
+    const params = normalizeParams(req);
+    console.log('Параметры запроса:', JSON.stringify(params, null, 2));
+    
+    // Создаем структуру запроса для Runware API
+    const payload = createRunwarePayload(params);
+    
+    // Заменяем токен на API ключ в первом сообщении
+    payload[0].token = RUNWARE_API_KEY;
+    
+    console.log('Отправка запроса к Runware API');
+    console.log('Модель:', params.model);
+    
+    // Готовим запрос к HTTP API
+    const httpUrl = RUNWARE_API_URL.replace('wss://', 'https://').replace('/ws', '/http');
+    const runwareResponse = await fetch(httpUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    // Логгируем информацию о статусе ответа
+    console.log('Runware API ответил:', runwareResponse.status, runwareResponse.statusText);
+    
+    // Получаем ответ в виде текста
+    const responseText = await runwareResponse.text();
+    console.log('Получен ответ длиной:', responseText.length);
+    
+    // Если статус ответа не успешный, обрабатываем ошибку
+    if (!runwareResponse.ok) {
+      console.error('Ошибка от Runware API:', responseText);
+      
+      try {
+        // Пытаемся разобрать JSON ответ
+        const errorData = JSON.parse(responseText);
+        return res.status(runwareResponse.status).json({
+          status: 'error',
+          message: errorData.error || 'Ошибка генерации изображения',
+          details: errorData
+        });
+      } catch (e) {
+        // Если не удалось разобрать JSON, возвращаем текст ошибки
+        return res.status(runwareResponse.status).json({
+          status: 'error',
+          message: 'Ошибка генерации изображения',
+          details: responseText
+        });
+      }
+    }
+    
+    // Пытаемся разобрать ответ как JSON
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Не удалось разобрать ответ как JSON:', e);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Некорректный формат ответа от API',
+        details: e.message
+      });
+    }
+    
+    // Проверяем структуру ответа
+    if (!responseData || !Array.isArray(responseData)) {
+      console.error('Неожиданный формат ответа:', responseData);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Неожиданный формат ответа от API',
+        details: responseData
+      });
+    }
+    
+    // Ищем объект с изображениями в ответе
+    const imageResponse = responseData.find(item => 
+      item.type === 'inference' && item.inference_result && Array.isArray(item.inference_result.images)
+    );
+    
+    if (!imageResponse) {
+      console.error('В ответе не найдены сгенерированные изображения:', responseData);
+      return res.status(500).json({
+        status: 'error',
+        message: 'В ответе не найдены сгенерированные изображения',
+        details: responseData
+      });
+    }
+    
+    // Извлекаем URL изображений
+    const images = imageResponse.inference_result.images.map(img => img.url);
+    
+    console.log(`Успешно получено ${images.length} изображений`);
+    
+    // Возвращаем успешный ответ с URL изображений
+    return res.status(200).json({
+      status: 'success',
+      images: images
+    });
+    
+  } catch (error) {
+    console.error('Ошибка при обработке запроса:', error);
+    
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Внутренняя ошибка сервера',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+}; 

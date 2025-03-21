@@ -3,66 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#333333" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <title>Генератор изображений Runware</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <div class="prompt-container">
-      <textarea id="prompt" placeholder="Введите текстовый запрос для генерации изображения..."></textarea>
-    </div>
-    
-    <div class="settings-panel" id="settingsPanel">
-      <div class="settings-header">
-        <span>Настройки</span>
-        <span class="toggle-arrow">▼</span>
-      </div>
-      <div class="settings-content">
-        <div class="setting-group">
-          <label for="model">Модель:</label>
-          <select id="model"></select>
-        </div>
-        
-        <div class="setting-group">
-          <label for="size">Размер:</label>
-          <select id="size"></select>
-        </div>
-        
-        <div class="setting-group">
-          <label for="steps">Шаги: <span id="stepsValue">30</span></label>
-          <input type="range" id="steps" min="20" max="50" value="30">
-        </div>
-        
-        <div class="setting-group">
-          <label for="cfgScale">CFG Scale: <span id="cfgScaleValue">7.5</span></label>
-          <input type="range" id="cfgScale" min="1" max="20" step="0.5" value="7.5">
-        </div>
-        
-        <div class="setting-group">
-          <label for="numResults">Количество изображений: <span id="numResultsValue">1</span></label>
-          <input type="range" id="numResults" min="1" max="4" value="1">
-        </div>
-      </div>
-    </div>
-    
-    <div class="generate-button-container">
-      <button id="generateBtn">Сгенерировать</button>
-    </div>
-    
-    <div id="results" class="results"></div>
-    
-    <div id="loader" class="loader" style="display: none;">
-      <div class="spinner"></div>
-      <p class="loading-text">Генерация изображения...</p>
-    </div>
-    
+  <div id="app">
     <div id="initLoader" class="loader" style="display: flex;">
       <div class="spinner"></div>
       <p class="loading-text">Инициализация приложения...</p>
     </div>
+    
+    <div class="container" style="display: none;">
+      <div class="prompt-container">
+        <textarea id="prompt" placeholder="Введите текстовый запрос для генерации изображения..."></textarea>
+      </div>
+      
+      <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+          <span>Настройки</span>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="settings-content">
+          <div class="setting-group">
+            <label for="model">Модель:</label>
+            <select id="model"></select>
+          </div>
+          
+          <div class="setting-group">
+            <label for="size">Размер:</label>
+            <select id="size"></select>
+          </div>
+          
+          <div class="setting-group">
+            <label for="steps">Шаги: <span id="stepsValue">30</span></label>
+            <input type="range" id="steps" min="20" max="50" value="30">
+          </div>
+          
+          <div class="setting-group">
+            <label for="cfgScale">CFG Scale: <span id="cfgScaleValue">7.5</span></label>
+            <input type="range" id="cfgScale" min="1" max="20" step="0.5" value="7.5">
+          </div>
+          
+          <div class="setting-group">
+            <label for="numResults">Количество изображений: <span id="numResultsValue">1</span></label>
+            <input type="range" id="numResults" min="1" max="4" value="1">
+          </div>
+        </div>
+      </div>
+      
+      <div class="generate-button-container">
+        <button id="generateBtn">Сгенерировать</button>
+      </div>
+      
+      <div id="results" class="results"></div>
+      
+      <div id="loader" class="loader" style="display: none;">
+        <div class="spinner"></div>
+        <p class="loading-text">Генерация изображения...</p>
+      </div>
+    </div>
   </div>
   
+  <script>
+    // Сначала проверяем наличие Telegram WebApp
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.Telegram?.WebApp) {
+        // Если Telegram WebApp доступен, показываем контент
+        setTimeout(function() {
+          document.querySelector('.container').style.display = 'block';
+        }, 500);
+      }
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html> 

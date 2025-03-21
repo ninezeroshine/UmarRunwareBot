@@ -1,9 +1,6 @@
 // API для генерации изображений
 const https = require('https');
 
-// Runware API точка доступа (используем HTTP вместо WebSocket)
-const RUNWARE_API_ENDPOINT = 'https://api.runware.ai/v1';
-
 // Обработчик для генерации изображений
 module.exports = async (req, res) => {
   console.log('API /generate: Получен запрос');
@@ -52,22 +49,32 @@ module.exports = async (req, res) => {
     prompt: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : '')
   });
 
-  // Формируем данные запроса
-  const requestData = JSON.stringify({
-    prompt,
-    model,
-    width,
-    height,
-    steps,
-    cfg_scale,
-    number_results
-  });
+  // Правильный формат данных для Runware API
+  const requestData = JSON.stringify([
+    {
+      taskType: 'authentication',
+      apiKey: apiKey
+    },
+    {
+      taskType: 'imageInference',
+      taskUUID: generateUUID(),
+      positivePrompt: prompt,
+      model: model,
+      width: width,
+      height: height,
+      steps: steps,
+      CFGScale: cfg_scale,
+      numberResults: number_results
+    }
+  ]);
+
+  console.log('API /generate: Подготовлен запрос в формате Runware API');
 
   // Настройки запроса
   const options = {
     hostname: 'api.runware.ai',
     port: 443,
-    path: '/v1/image/generate',
+    path: '/v1',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -84,22 +91,40 @@ module.exports = async (req, res) => {
     
     console.log('API /generate: Получен ответ от Runware API');
     
-    // Обработка ответа
-    if (apiResponse.error) {
-      console.error('API /generate: Ошибка от Runware API:', apiResponse.error);
-      return res.status(500).json({ error: `Ошибка API: ${apiResponse.error}` });
+    // Полное логирование ответа для диагностики
+    console.log('API /generate: Полный ответ от API:', JSON.stringify(apiResponse).substring(0, 500) + '...');
+    
+    // Обработка ошибок API
+    if (apiResponse.errors && apiResponse.errors.length > 0) {
+      const errorMessage = apiResponse.errors[0].message || 'Ошибка API Runware';
+      console.error('API /generate: Ошибка от Runware API:', errorMessage);
+      return res.status(500).json({ error: errorMessage });
     }
     
-    // Проверка структуры ответа
-    if (!apiResponse.images || !Array.isArray(apiResponse.images) || apiResponse.images.length === 0) {
+    // Проверка структуры ответа (по формату Runware API)
+    if (!apiResponse.data || !Array.isArray(apiResponse.data)) {
       console.error('API /generate: Некорректный формат ответа', apiResponse);
       return res.status(500).json({ error: 'Неожиданный формат ответа API' });
     }
     
-    console.log(`API /generate: Успешно получено ${apiResponse.images.length} изображений`);
+    // Извлекаем URL изображений из ответа в формате Runware API
+    const imageResults = apiResponse.data.filter(item => 
+      item.taskType === 'imageInference' && item.imageURL
+    );
+    
+    if (imageResults.length === 0) {
+      console.error('API /generate: Нет результатов генерации в ответе');
+      return res.status(500).json({ error: 'Нет результатов генерации изображений' });
+    }
+    
+    // Собираем все URL изображений
+    const imageUrls = imageResults.map(item => item.imageURL);
+    
+    console.log(`API /generate: Успешно получено ${imageUrls.length} изображений`);
+    imageUrls.forEach((url, i) => console.log(`Изображение ${i+1}:`, url.substring(0, 100) + '...'));
     
     // Возвращаем результат
-    return res.status(200).json({ images: apiResponse.images });
+    return res.status(200).json({ images: imageUrls });
     
   } catch (error) {
     console.error('API /generate: Ошибка при обработке запроса:', error.message);
@@ -126,13 +151,16 @@ function makeRequest(options, data) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(parsedData);
           } else {
-            const errorMessage = parsedData.error || `Ошибка HTTP: ${res.statusCode}`;
-            resolve({ error: errorMessage });
+            const errorMessage = parsedData.error || 
+                              (parsedData.errors && parsedData.errors.length > 0 ? 
+                               parsedData.errors[0].message : 
+                               `Ошибка HTTP: ${res.statusCode}`);
+            resolve({ errors: [{ message: errorMessage }] });
           }
         } catch (e) {
           console.error('API /generate: Ошибка парсинга JSON:', e);
           console.log('API /generate: Полученные данные:', responseData.substring(0, 200));
-          resolve({ error: 'Не удалось разобрать ответ API' });
+          resolve({ errors: [{ message: 'Не удалось разобрать ответ API' }] });
         }
       });
     });
@@ -142,10 +170,10 @@ function makeRequest(options, data) {
       reject(new Error(`Ошибка сетевого запроса: ${error.message}`));
     });
     
-    // Таймаут запроса (30 секунд)
-    req.setTimeout(30000, () => {
+    // Таймаут запроса (60 секунд для генерации изображений)
+    req.setTimeout(60000, () => {
       req.destroy();
-      reject(new Error('Превышен таймаут запроса'));
+      reject(new Error('Превышен таймаут запроса (60 сек)'));
     });
     
     // Отправляем данные

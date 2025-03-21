@@ -173,6 +173,7 @@ async function generateImage() {
     
     console.log('Отправка запроса на генерацию:', requestBody);
     
+    // Запрос к API
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
@@ -181,15 +182,42 @@ async function generateImage() {
       body: JSON.stringify(requestBody)
     });
     
-    console.log('Статус ответа:', response.status);
+    console.log('Статус ответа:', response.status, response.statusText);
     
+    // Получаем текстовое содержимое ответа для логирования
+    const responseText = await response.text();
+    console.log('Текст ответа:', responseText);
+    
+    // Если ответ не является успешным
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка генерации');
+      let errorMessage = 'Ошибка генерации';
+      
+      try {
+        // Пробуем распарсить JSON
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        console.error('Не удалось разобрать ответ как JSON:', e);
+      }
+      
+      throw new Error(errorMessage);
     }
     
-    const data = await response.json();
+    // Парсим JSON ответа
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Ошибка при парсинге JSON ответа:', e);
+      throw new Error('Получен некорректный формат данных от сервера');
+    }
+    
     console.log('Получен ответ с изображениями:', data);
+    
+    if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
+      console.error('Нет изображений в ответе:', data);
+      throw new Error('Сервер не вернул изображения');
+    }
     
     displayResults(data.images);
     

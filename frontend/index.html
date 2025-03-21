@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Flux Image Generator</title>
+  
+  <!-- Подключаем Telegram Mini App API -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Подключаем стили -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Подключаем Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <!-- Подключаем шрифт Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Заголовок приложения -->
+    <div class="app-header">
+      <h1>Flux Generator</h1>
+      <p class="subtitle">Генерация изображений с Flux</p>
+    </div>
+    
+    <!-- Главная форма -->
+    <div class="main-container">
+      <!-- Промпт -->
+      <div class="form-group">
+        <label for="prompt">Промпт</label>
+        <textarea id="prompt" placeholder="Опишите то, что хотите сгенерировать..."></textarea>
+      </div>
+      
+      <!-- Настройки -->
+      <div class="settings-container">
+        <div class="settings-header">
+          <h2>Настройки</h2>
+          <button id="toggle-settings" class="icon-button">
+            <span class="material-icons">expand_more</span>
+          </button>
+        </div>
+        
+        <div class="settings-body">
+          <!-- Модель -->
+          <div class="form-group">
+            <label for="model">Модель</label>
+            <select id="model">
+              <!-- Опции добавляются через JavaScript -->
+            </select>
+          </div>
+          
+          <!-- Размер -->
+          <div class="form-group">
+            <label for="size">Размер</label>
+            <select id="size">
+              <!-- Опции добавляются через JavaScript -->
+            </select>
+          </div>
+          
+          <!-- Шаги -->
+          <div class="form-group">
+            <label for="steps">Шаги</label>
+            <div class="range-container">
+              <input type="range" id="steps" min="10" max="100" value="30">
+              <span id="steps-value">30</span>
+            </div>
+          </div>
+          
+          <!-- CFG Scale -->
+          <div class="form-group">
+            <label for="cfg-scale">CFG Scale</label>
+            <div class="range-container">
+              <input type="range" id="cfg-scale" min="1" max="30" step="0.5" value="7.5">
+              <span id="cfg-value">7.5</span>
+            </div>
+          </div>
+          
+          <!-- Количество результатов -->
+          <div class="form-group">
+            <label for="number-results">Количество результатов</label>
+            <div class="range-container">
+              <input type="range" id="number-results" min="1" max="4" step="1" value="1">
+              <span id="results-value">1</span>
+            </div>
+          </div>
+          
+          <!-- LoRA модели -->
+          <div class="form-group">
+            <label>LoRA модели</label>
+            <div id="loras-container">
+              <!-- LoRA модели добавляются через JavaScript -->
+            </div>
+            <button id="add-lora" class="secondary-button">
+              <span class="material-icons">add</span> Добавить LoRA
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Кнопка генерации -->
+      <button id="generate-button" class="primary-button">
+        <span class="material-icons">auto_awesome</span> Генерировать
+      </button>
+    </div>
+    
+    <!-- Результаты генерации -->
+    <div id="results-container" class="results-container hidden">
+      <h2>Результаты</h2>
+      <div id="images-container" class="images-container">
+        <!-- Изображения добавляются через JavaScript -->
+      </div>
+    </div>
+    
+    <!-- Лоадер -->
+    <div id="loader" class="loader hidden">
+      <div class="spinner"></div>
+      <p>Генерация изображения...</p>
+    </div>
+    
+    <!-- Модальное окно для добавления LoRA -->
+    <div id="lora-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Добавить LoRA модель</h2>
+          <button id="close-modal" class="icon-button">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="lora-id">ID модели</label>
+            <input type="text" id="lora-id" placeholder="Например: civitai:123456@789012">
+          </div>
+          <div class="form-group">
+            <label for="lora-weight">Вес модели</label>
+            <div class="range-container">
+              <input type="range" id="lora-weight" min="0.1" max="2" step="0.1" value="1">
+              <span id="weight-value">1</span>
+            </div>
+          </div>
+          <button id="add-lora-button" class="primary-button">Добавить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Подключаем JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>

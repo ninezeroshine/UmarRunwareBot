@@ -1,0 +1,17 @@
+{
+  "name": "flux-telegram-app",
+  "version": "1.0.0",
+  "description": "Телеграм Mini App для генерации изображений через Flux",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "install-deps": "npm install && cd backend && npm install"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+} 

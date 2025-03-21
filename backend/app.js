@@ -1,10 +1,3 @@
-// Инициализация Telegram WebApp
-const telegram = window.Telegram.WebApp;
-telegram.expand();
-
-// Устанавливаем тему
-document.body.classList.add(telegram.colorScheme === 'dark' ? 'theme-dark' : 'theme-light');
-
 // Переменные для хранения состояния приложения
 let settings = {
     model: '',
@@ -39,9 +32,13 @@ const toggleArrow = settingsPanel.querySelector('.toggle-arrow');
 const loraModelsContainer = document.getElementById('loraModels');
 const addLoraBtn = document.getElementById('addLora');
 
+// Проверка Telegram WebApp
+const telegram = window.Telegram.WebApp;
+
 // Загрузка настроек по умолчанию
 async function loadDefaultSettings() {
     try {
+        showLoader('Загрузка настроек...');
         const response = await fetch('/api/default-settings');
         if (!response.ok) {
             throw new Error('Не удалось загрузить настройки');
@@ -50,13 +47,13 @@ async function loadDefaultSettings() {
         settings = data.settings;
         
         // Заполнение полей формы
-        promptInput.value = settings.prompt;
-        stepsSlider.value = settings.steps;
-        stepsValue.textContent = settings.steps;
-        cfgScaleSlider.value = settings.cfg_scale;
-        cfgScaleValue.textContent = settings.cfg_scale;
-        numResultsSlider.value = settings.number_results;
-        numResultsValue.textContent = settings.number_results;
+        promptInput.value = settings.prompt || '';
+        stepsSlider.value = settings.steps || 30;
+        stepsValue.textContent = settings.steps || 30;
+        cfgScaleSlider.value = settings.cfg_scale || 7.5;
+        cfgScaleValue.textContent = settings.cfg_scale || 7.5;
+        numResultsSlider.value = settings.number_results || 1;
+        numResultsValue.textContent = settings.number_results || 1;
         
         // Загрузка моделей и размеров
         await Promise.all([
@@ -64,7 +61,9 @@ async function loadDefaultSettings() {
             loadSizes()
         ]);
         
+        hideLoader();
     } catch (error) {
+        hideLoader();
         showError(error.message || 'Не удалось загрузить настройки с сервера');
     }
 }
@@ -129,11 +128,22 @@ async function loadSizes() {
     }
 }
 
+// Показ загрузчика
+function showLoader(message = 'Генерация изображения...') {
+    const loaderText = document.querySelector('.loading-text');
+    loaderText.textContent = message;
+    loader.style.display = 'flex';
+}
+
+// Скрытие загрузчика
+function hideLoader() {
+    loader.style.display = 'none';
+}
+
 // Генерация изображения
 async function generateImage() {
     try {
-        // Показываем лоадер
-        loader.style.display = 'flex';
+        showLoader('Генерация изображения...');
         
         // Формируем тело запроса
         const requestBody = {
@@ -146,6 +156,8 @@ async function generateImage() {
             number_results: settings.number_results,
             loras: settings.loras
         };
+        
+        console.log('Запрос на генерацию:', JSON.stringify(requestBody));
         
         // Отправляем запрос
         const response = await fetch('/api/generate', {
@@ -167,10 +179,10 @@ async function generateImage() {
         displayResults(data.images);
         
     } catch (error) {
+        console.error('Ошибка генерации:', error);
         showError(error.message || 'Произошла ошибка при генерации изображения');
     } finally {
-        // Скрываем лоадер
-        loader.style.display = 'none';
+        hideLoader();
     }
 }
 
@@ -232,15 +244,19 @@ numResultsSlider.addEventListener('input', () => {
 // Обработчики событий селектов
 modelSelect.addEventListener('change', () => {
     const selectedOption = modelSelect.options[modelSelect.selectedIndex];
-    updateSetting('model', modelSelect.value);
-    updateSetting('model_name', selectedOption.textContent);
+    if (selectedOption) {
+        updateSetting('model', modelSelect.value);
+        updateSetting('model_name', selectedOption.textContent);
+    }
 });
 
 sizeSelect.addEventListener('change', () => {
     const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
-    updateSetting('size_name', sizeSelect.value);
-    updateSetting('width', parseInt(selectedOption.dataset.width));
-    updateSetting('height', parseInt(selectedOption.dataset.height));
+    if (selectedOption) {
+        updateSetting('size_name', sizeSelect.value);
+        updateSetting('width', parseInt(selectedOption.dataset.width));
+        updateSetting('height', parseInt(selectedOption.dataset.height));
+    }
 });
 
 // Обработчик событий поля ввода промпта
@@ -254,34 +270,21 @@ generateBtn.addEventListener('click', () => {
         showError('Введите текстовый запрос');
         return;
     }
+    
+    if (!settings.model) {
+        showError('Выберите модель');
+        return;
+    }
+    
     generateImage();
 });
 
 // Переключение отображения панели настроек
 settingsHeader.addEventListener('click', () => {
-    settingsContent.style.display = settingsContent.style.display === 'none' ? 'block' : 'none';
-    toggleArrow.style.transform = settingsContent.style.display === 'none' ? 'rotate(180deg)' : 'none';
+    const isVisible = settingsContent.style.display !== 'none';
+    settingsContent.style.display = isVisible ? 'none' : 'block';
+    toggleArrow.style.transform = isVisible ? 'rotate(180deg)' : 'none';
 });
 
-// Инициализация приложения
-async function initApp() {
-    try {
-        // Проверяем, что Telegram WebApp доступен
-        if (!telegram) {
-            document.body.innerHTML = '<div class="error-message">Это приложение может быть запущено только из Telegram</div>';
-            return;
-        }
-        
-        // Загружаем настройки
-        await loadDefaultSettings();
-        
-        // Показываем основной контент
-        document.body.style.visibility = 'visible';
-        
-    } catch (error) {
-        showError('Ошибка инициализации приложения: ' + error.message);
-    }
-}
-
-// Запуск приложения
-document.addEventListener('DOMContentLoaded', initApp);
+// Запуск загрузки настроек
+loadDefaultSettings();

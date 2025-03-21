@@ -4,41 +4,45 @@ const morgan = require('morgan');
 const path = require('path');
 const config = require('./config');
 const runwareApi = require('./runware_api');
-const { startBot } = require('./telegram_bot');
 
 // Инициализация приложения Express
 const app = express();
-const port = config.PORT;
+const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Разрешаем запросы с разных доменов (для разработки)
+app.use(cors()); // Разрешаем запросы с разных доменов
 app.use(express.json()); // Парсинг JSON-запросов
 app.use(morgan('dev')); // Логирование запросов
 
 // Статические файлы из директории frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname)));
+
+// Корневой маршрут для отдачи HTML
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Обработчик для проверки состояния сервера
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    connected: runwareApi.connected 
+    connected: runwareApi.isConnected() || false
   });
 });
 
 // Получение списка доступных моделей
 app.get('/api/models', (req, res) => {
-  res.json({ models: config.FLUX_MODELS });
+  res.json({ models: config.FLUX_MODELS || [] });
 });
 
 // Получение списка доступных размеров изображений
 app.get('/api/sizes', (req, res) => {
-  res.json({ sizes: config.AVAILABLE_SIZES });
+  res.json({ sizes: config.AVAILABLE_SIZES || [] });
 });
 
 // Получение конфигурации по умолчанию
 app.get('/api/default-settings', (req, res) => {
-  res.json({ settings: config.DEFAULT_SETTINGS });
+  res.json({ settings: config.DEFAULT_SETTINGS || {} });
 });
 
 // Генерация изображения
@@ -66,6 +70,11 @@ app.post('/api/generate', async (req, res) => {
     
     console.log(`Запрос на генерацию изображения. Модель: ${model}, Промпт: ${prompt}`);
     
+    // Подключение к API если нужно
+    if (!runwareApi.isConnected()) {
+      await runwareApi.connect();
+    }
+    
     // Вызов API для генерации
     const imageUrls = await runwareApi.generateImage({
       prompt,
@@ -92,34 +101,29 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Внутренняя ошибка сервера' });
 });
 
-// Запуск сервера
-async function startServer() {
-  try {
-    // Подключение к API Runware
-    await runwareApi.connect();
-    console.log('Соединение с Runware API установлено');
-    
-    // Запуск Telegram бота
-    await startBot();
-    
-    // Запуск веб-сервера
-    app.listen(port, () => {
-      console.log(`Сервер запущен на порту ${port}`);
-      console.log(`Интерфейс доступен по адресу: http://localhost:${port}`);
-    });
-    
-  } catch (error) {
-    console.error('Ошибка при запуске сервера:', error);
-    process.exit(1);
+// Для локального запуска
+if (process.env.NODE_ENV !== 'production') {
+  async function startServer() {
+    try {
+      // Подключение к API Runware
+      await runwareApi.connect();
+      console.log('Соединение с Runware API установлено');
+      
+      // Запуск веб-сервера
+      app.listen(port, () => {
+        console.log(`Сервер запущен на порту ${port}`);
+        console.log(`Интерфейс доступен по адресу: http://localhost:${port}`);
+      });
+      
+    } catch (error) {
+      console.error('Ошибка при запуске сервера:', error);
+      process.exit(1);
+    }
   }
+  
+  // Запуск сервера локально
+  startServer();
 }
 
-// Обработка завершения работы
-process.on('SIGINT', async () => {
-  console.log('Завершение работы сервера...');
-  await runwareApi.close();
-  process.exit(0);
-});
-
-// Запуск сервера
-startServer();
+// Для production окружения (Vercel)
+module.exports = app;

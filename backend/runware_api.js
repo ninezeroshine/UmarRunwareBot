@@ -245,6 +245,11 @@ class RunwareAPI {
       throw error;
     }
   }
+
+  // Добавляем метод isConnected для проверки соединения
+  isConnected() {
+    return this.connected || false;
+  }
 }
 
 // Создаем и экспортируем экземпляр API

@@ -11,9 +11,10 @@ const telegramHandler = require('./telegram');
 
 // Базовые модели и размеры по умолчанию
 const DEFAULT_MODELS = {
-  'Stable Diffusion XL': 'sd_xl',
-  'Stable Diffusion 1.5': 'sd_1_5',
-  'Stable Diffusion 2.1': 'sd_2_1'
+  'FLUX Realistic': 'runware:18838@1',
+  'FLUX Dev': 'runware:101@1',
+  'FLUX Anime': 'runware:18840@1',
+  'FLUX Fantasy': 'runware:18839@1'
 };
 
 const DEFAULT_SIZES = {

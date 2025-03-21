@@ -14,8 +14,8 @@ app.use(cors()); // Разрешаем запросы с разных домен
 app.use(express.json()); // Парсинг JSON-запросов
 app.use(morgan('dev')); // Логирование запросов
 
-// Статические файлы из директории frontend
-app.use(express.static(path.join(__dirname)));
+// Статические файлы из текущей директории
+app.use(express.static(__dirname));
 
 // Корневой маршрут для отдачи HTML
 app.get('/', (req, res) => {
@@ -25,8 +25,8 @@ app.get('/', (req, res) => {
 // Обработчик для проверки состояния сервера
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'ok', 
-    connected: runwareApi.isConnected() || false
+    status: 'ok',
+    version: '1.0.0'
   });
 });
 

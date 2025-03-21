@@ -1,26 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "backend/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/server.js"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "backend/server.js"
-    }
+  "buildCommand": "cp -r backend/* .",
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/server.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 } 

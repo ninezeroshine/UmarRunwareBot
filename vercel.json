@@ -1,20 +1,22 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    }
+    { "src": "api/index.js", "use": "@vercel/node" },
+    { "src": "api/generate.js", "use": "@vercel/node" },
+    { "src": "api/health.js", "use": "@vercel/node" },
+    { "src": "api/telegram.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "/api/generate",
-      "methods": ["POST"],
-      "dest": "api/generate.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "api/index.js"
-    }
-  ]
+    { "src": "/api/generate", "dest": "api/generate.js" },
+    { "src": "/api/health", "dest": "api/health.js" },
+    { "src": "/api/telegram", "dest": "api/telegram.js" },
+    { "src": "/api/models", "dest": "api/index.js" },
+    { "src": "/api/sizes", "dest": "api/index.js" },
+    { "src": "/api/(.*)", "dest": "api/index.js" },
+    { "src": "/(.*)", "dest": "api/index.js" }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 } 

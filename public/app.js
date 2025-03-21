@@ -2,6 +2,14 @@
 const telegram = window.Telegram.WebApp;
 telegram.expand();
 
+// Логирование для отладки
+console.log('Telegram WebApp инициализирован', {
+  initData: telegram.initData ? 'присутствует' : 'отсутствует',
+  version: telegram.version,
+  platform: telegram.platform,
+  colorScheme: telegram.colorScheme
+});
+
 // Настройка темы
 document.body.classList.add(telegram.colorScheme === 'dark' ? 'theme-dark' : 'theme-light');
 
@@ -49,19 +57,45 @@ function hideLoader() {
 }
 
 function showError(message) {
-  console.error(message);
-  telegram.showAlert(message);
+  console.error('Ошибка:', message);
+  
+  try {
+    telegram.showAlert(message);
+  } catch (e) {
+    console.error('Не удалось показать уведомление через Telegram WebApp:', e);
+    alert(message);
+  }
+}
+
+// Проверка работоспособности API
+async function checkApiHealth() {
+  try {
+    const response = await fetch('/api/health');
+    if (!response.ok) {
+      throw new Error('API недоступен');
+    }
+    
+    const data = await response.json();
+    console.log('Статус API:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('Ошибка проверки API:', error);
+    return { status: 'error' };
+  }
 }
 
 // Загрузка моделей
 async function loadModels() {
   try {
+    console.log('Запрос списка моделей');
     const response = await fetch('/api/models');
     if (!response.ok) {
       throw new Error('Не удалось загрузить модели');
     }
     
     const data = await response.json();
+    console.log('Получены модели:', data);
     
     modelSelect.innerHTML = '';
     
@@ -87,12 +121,14 @@ async function loadModels() {
 // Загрузка размеров
 async function loadSizes() {
   try {
+    console.log('Запрос списка размеров');
     const response = await fetch('/api/sizes');
     if (!response.ok) {
       throw new Error('Не удалось загрузить размеры');
     }
     
     const data = await response.json();
+    console.log('Получены размеры:', data);
     
     sizeSelect.innerHTML = '';
     
@@ -135,6 +171,8 @@ async function generateImage() {
       number_results: settings.number_results
     };
     
+    console.log('Отправка запроса на генерацию:', requestBody);
+    
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
@@ -143,16 +181,20 @@ async function generateImage() {
       body: JSON.stringify(requestBody)
     });
     
+    console.log('Статус ответа:', response.status);
+    
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Ошибка генерации');
     }
     
     const data = await response.json();
+    console.log('Получен ответ с изображениями:', data);
     
     displayResults(data.images);
     
   } catch (error) {
+    console.error('Ошибка генерации:', error);
     showError('Ошибка генерации: ' + error.message);
   } finally {
     hideLoader();
@@ -165,11 +207,16 @@ function displayResults(images) {
   
   if (!images || images.length === 0) {
     resultsArea.innerHTML = '<div class="error-message">Нет результатов</div>';
+    console.warn('Нет изображений для отображения');
     return;
   }
   
+  console.log(`Отображение ${images.length} изображений`);
+  
   // Отображаем каждое изображение
-  images.forEach(imageUrl => {
+  images.forEach((imageUrl, index) => {
+    console.log(`Отображение изображения ${index + 1}: ${imageUrl.substring(0, 50)}...`);
+    
     const resultItem = document.createElement('div');
     resultItem.className = 'result-item';
     
@@ -179,13 +226,19 @@ function displayResults(images) {
     image.loading = 'lazy';
     
     // Обработка ошибки загрузки изображения
-    image.onerror = () => {
+    image.onerror = (e) => {
+      console.error('Ошибка загрузки изображения:', e);
       image.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg width%3D%22232%22 height%3D%22232%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 232 232%22 preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle type%3D%22text%2Fcss%22%3E%23holder_16e83f428cc text %7B fill%3A%23868e96%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C Helvetica%2C Open Sans%2C sans-serif%2C monospace%3Bfont-size%3A12pt %7D %3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg id%3D%22holder_16e83f428cc%22%3E%3Crect width%3D%22232%22 height%3D%22232%22 fill%3D%22%23777%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext x%3D%2285.859375%22 y%3D%22121.2%22%3EError%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
     };
     
     // Открыть изображение при клике
     image.onclick = () => {
-      telegram.openLink(imageUrl);
+      try {
+        telegram.openLink(imageUrl);
+      } catch (e) {
+        console.error('Ошибка открытия ссылки через Telegram:', e);
+        window.open(imageUrl, '_blank');
+      }
     };
     
     resultItem.appendChild(image);
@@ -196,6 +249,7 @@ function displayResults(images) {
 // Обновление настроек
 function updateSetting(key, value) {
   settings[key] = value;
+  console.log(`Обновлена настройка ${key}:`, value);
 }
 
 // Обработчики событий
@@ -255,19 +309,48 @@ settingsHeader.addEventListener('click', () => {
   toggleArrow.style.transform = isVisible ? 'rotate(180deg)' : 'none';
 });
 
+// Проверка телеграм-бота
+async function checkTelegramBot() {
+  try {
+    console.log('Проверка Telegram бота');
+    const response = await fetch('/api/telegram');
+    if (!response.ok) {
+      throw new Error('Не удалось получить информацию о боте');
+    }
+    
+    const data = await response.json();
+    console.log('Информация о боте:', data);
+    
+  } catch (error) {
+    console.error('Ошибка проверки Telegram бота:', error);
+  }
+}
+
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!telegram.initDataUnsafe?.user) {
-    console.warn('Telegram WebApp данные не доступны. Возможно, приложение запущено не из Telegram.');
+  console.log('Приложение загружено');
+  
+  if (!window.Telegram || !telegram) {
+    console.warn('Telegram WebApp не обнаружен. Возможно, приложение запущено не из Telegram.');
+  } else if (!telegram.initDataUnsafe?.user) {
+    console.warn('Данные пользователя Telegram отсутствуют');
   }
   
   showLoader('Загрузка...');
   
   try {
+    // Проверка API
+    await checkApiHealth();
+    
+    // Загрузка данных
     await Promise.all([
       loadModels(),
       loadSizes()
     ]);
+    
+    // Проверка бота
+    await checkTelegramBot();
+    
   } catch (error) {
     console.error('Ошибка инициализации:', error);
   } finally {

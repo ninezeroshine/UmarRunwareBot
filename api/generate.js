@@ -3,10 +3,10 @@ const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 
 // URL и ключ API Runware
-const RUNWARE_API_URL = process.env.RUNWARE_API_URL || 'wss://api.runware.ai:2096/api/v0/ws';
+const RUNWARE_API_URL = process.env.RUNWARE_API_URL || 'https://api.runware.ai:2096/api/v0/http';
 const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 
-// Функция для получения корректного формата запроса
+// Функция для создания корректного формата запроса к API
 function createRunwarePayload(params) {
   // Проверяем наличие обязательных параметров
   if (!params.prompt) {
@@ -19,11 +19,25 @@ function createRunwarePayload(params) {
   
   // UUID для идентификации запроса
   const uuid = uuidv4();
+  console.log(`Сгенерирован UUID: ${uuid}`);
   
-  // Создаем корректную структуру запроса
+  // Выводим значения всех параметров для отладки
+  console.log('Параметры запроса:', {
+    model: params.model,
+    prompt: params.prompt.substring(0, 50) + (params.prompt.length > 50 ? '...' : ''),
+    negative_prompt: params.negative_prompt,
+    width: params.width,
+    height: params.height,
+    steps: params.steps,
+    cfg_scale: params.cfg_scale,
+    number_results: params.number_results,
+    seed: params.seed
+  });
+  
+  // Создаем корректную структуру запроса для Runware API
   return [
     {
-      "token": "token",  // Этот токен будет заменен при обработке запроса
+      "token": RUNWARE_API_KEY, // Токен API для аутентификации
       "type": "auth",
       "uuid": uuid
     },
@@ -46,16 +60,16 @@ function createRunwarePayload(params) {
   ];
 }
 
-// Функция для нормализации параметров в запросе
+// Функция для нормализации параметров запроса
 function normalizeParams(req) {
   // Получаем данные из запроса
   const requestData = req.body || {};
   
-  // Проверяем и нормализуем параметры
+  // Возвращаем нормализованные параметры
   return {
-    prompt: requestData.prompt,
-    negative_prompt: requestData.negative_prompt,
-    model: requestData.model,
+    prompt: requestData.prompt || '',
+    negative_prompt: requestData.negative_prompt || '',
+    model: requestData.model || '',
     width: parseInt(requestData.width) || 512,
     height: parseInt(requestData.height) || 512,
     steps: parseInt(requestData.steps) || 30,
@@ -65,11 +79,13 @@ function normalizeParams(req) {
   };
 }
 
-// Обработчик запросов на генерацию изображений
+// Основной обработчик запросов
 module.exports = async (req, res) => {
-  // Проверяем, что у нас есть API ключ
+  console.log('API /generate: Получен запрос');
+  
+  // Проверяем наличие API ключа
   if (!RUNWARE_API_KEY) {
-    console.error('RUNWARE_API_KEY не найден в переменных окружения');
+    console.error('API /generate: RUNWARE_API_KEY не найден в переменных окружения');
     return res.status(500).json({
       status: 'error',
       message: 'Ошибка конфигурации сервера: отсутствует API ключ'
@@ -78,6 +94,7 @@ module.exports = async (req, res) => {
   
   // Проверяем метод запроса
   if (req.method !== 'POST') {
+    console.error(`API /generate: Неподдерживаемый метод ${req.method}`);
     return res.status(405).json({
       status: 'error',
       message: 'Метод не поддерживается. Используйте POST.'
@@ -87,20 +104,41 @@ module.exports = async (req, res) => {
   try {
     // Подготавливаем параметры запроса
     const params = normalizeParams(req);
-    console.log('Параметры запроса:', JSON.stringify(params, null, 2));
+    console.log('API /generate: Нормализованные параметры:', JSON.stringify(params, null, 2));
     
-    // Создаем структуру запроса для Runware API
+    // Проверяем обязательные параметры
+    if (!params.prompt.trim()) {
+      console.error('API /generate: Отсутствует параметр prompt');
+      return res.status(400).json({
+        status: 'error',
+        message: 'Не указан текстовый запрос'
+      });
+    }
+    
+    if (!params.model.trim()) {
+      console.error('API /generate: Отсутствует параметр model');
+      return res.status(400).json({
+        status: 'error',
+        message: 'Не указана модель'
+      });
+    }
+    
+    // Проверка формата модели
+    if (!params.model.match(/^[a-zA-Z0-9]+:[0-9]+@[0-9]+$/)) {
+      console.error(`API /generate: Некорректный формат модели: ${params.model}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Некорректный формат идентификатора модели'
+      });
+    }
+    
+    // Создаем запрос API
     const payload = createRunwarePayload(params);
+    console.log('API /generate: Структура запроса к API:', JSON.stringify(payload, null, 2));
     
-    // Заменяем токен на API ключ в первом сообщении
-    payload[0].token = RUNWARE_API_KEY;
-    
-    console.log('Отправка запроса к Runware API');
-    console.log('Модель:', params.model);
-    
-    // Готовим запрос к HTTP API
-    const httpUrl = RUNWARE_API_URL.replace('wss://', 'https://').replace('/ws', '/http');
-    const runwareResponse = await fetch(httpUrl, {
+    // Отправляем запрос к API
+    console.log(`API /generate: Отправка запроса к API по адресу: ${RUNWARE_API_URL}`);
+    const runwareResponse = await fetch(RUNWARE_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -108,16 +146,24 @@ module.exports = async (req, res) => {
       body: JSON.stringify(payload)
     });
     
-    // Логгируем информацию о статусе ответа
-    console.log('Runware API ответил:', runwareResponse.status, runwareResponse.statusText);
+    // Логируем информацию о статусе ответа
+    console.log(`API /generate: Получен ответ от API со статусом: ${runwareResponse.status} ${runwareResponse.statusText}`);
     
-    // Получаем ответ в виде текста
+    // Получаем полный ответ в виде текста
     const responseText = await runwareResponse.text();
-    console.log('Получен ответ длиной:', responseText.length);
+    console.log(`API /generate: Получен ответ длиной: ${responseText.length} байт`);
     
-    // Если статус ответа не успешный, обрабатываем ошибку
+    // Логируем начало и конец ответа для отладки
+    if (responseText.length > 0) {
+      console.log('API /generate: Начало ответа:', responseText.substring(0, 200));
+      if (responseText.length > 200) {
+        console.log('API /generate: Конец ответа:', responseText.substring(responseText.length - 200));
+      }
+    }
+    
+    // Если ответ не успешный, обрабатываем ошибку
     if (!runwareResponse.ok) {
-      console.error('Ошибка от Runware API:', responseText);
+      console.error('API /generate: Ошибка от API:', responseText);
       
       try {
         // Пытаемся разобрать JSON ответ
@@ -141,8 +187,9 @@ module.exports = async (req, res) => {
     let responseData;
     try {
       responseData = JSON.parse(responseText);
+      console.log('API /generate: Ответ успешно разобран как JSON');
     } catch (e) {
-      console.error('Не удалось разобрать ответ как JSON:', e);
+      console.error('API /generate: Не удалось разобрать ответ как JSON:', e);
       return res.status(500).json({
         status: 'error',
         message: 'Некорректный формат ответа от API',
@@ -152,7 +199,7 @@ module.exports = async (req, res) => {
     
     // Проверяем структуру ответа
     if (!responseData || !Array.isArray(responseData)) {
-      console.error('Неожиданный формат ответа:', responseData);
+      console.error('API /generate: Неожиданный формат ответа:', responseData);
       return res.status(500).json({
         status: 'error',
         message: 'Неожиданный формат ответа от API',
@@ -161,12 +208,26 @@ module.exports = async (req, res) => {
     }
     
     // Ищем объект с изображениями в ответе
+    console.log('API /generate: Поиск результатов в ответе');
     const imageResponse = responseData.find(item => 
       item.type === 'inference' && item.inference_result && Array.isArray(item.inference_result.images)
     );
     
+    // Если изображения не найдены
     if (!imageResponse) {
-      console.error('В ответе не найдены сгенерированные изображения:', responseData);
+      console.error('API /generate: В ответе не найдены изображения:', JSON.stringify(responseData));
+      
+      // Ищем сообщения об ошибках
+      const errorItem = responseData.find(item => item.error);
+      if (errorItem) {
+        console.error('API /generate: Найдено сообщение об ошибке в ответе:', errorItem.error);
+        return res.status(500).json({
+          status: 'error',
+          message: errorItem.error || 'Ошибка генерации изображения',
+          details: errorItem
+        });
+      }
+      
       return res.status(500).json({
         status: 'error',
         message: 'В ответе не найдены сгенерированные изображения',
@@ -176,8 +237,10 @@ module.exports = async (req, res) => {
     
     // Извлекаем URL изображений
     const images = imageResponse.inference_result.images.map(img => img.url);
-    
-    console.log(`Успешно получено ${images.length} изображений`);
+    console.log(`API /generate: Извлечено ${images.length} URL изображений`);
+    images.forEach((url, index) => {
+      console.log(`API /generate: Изображение ${index + 1}: ${url}`);
+    });
     
     // Возвращаем успешный ответ с URL изображений
     return res.status(200).json({
@@ -186,7 +249,7 @@ module.exports = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Ошибка при обработке запроса:', error);
+    console.error('API /generate: Ошибка при обработке запроса:', error);
     
     return res.status(500).json({
       status: 'error',
